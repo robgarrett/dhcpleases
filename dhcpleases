@@ -13,10 +13,10 @@ import ipaddress
 from datetime import datetime, timezone
 from enum import IntEnum
 
-IPV4_CONFIG_FILE = "/etc/dhcpd.conf"
-IPV4_LEASE_FILE = "/var/lib/dhcp/db/dhcpd.leases"
-IPV6_CONFIG_FILE = "/etc/dhcpd6.conf"
-IPV6_LEASE_FILE = "/var/lib/dhcp6/db/dhcpd6.leases"
+IPV4_CONFIG_FILE = "/etc/dhcp/dhcpd.conf"
+IPV4_LEASE_FILE = "/var/lib/dhcp/dhcpd.leases"
+IPV6_CONFIG_FILE = "/etc/dhcp/dhcpd6.conf"
+IPV6_LEASE_FILE = "/var/lib/dhcp/dhcpd6.leases"
 OUI_FILE = "/usr/share/misc/oui.json"
 
 # Epoch time (0 seconds since January 1, 1970) as a datetime object
@@ -24,7 +24,6 @@ OUI_FILE = "/usr/share/misc/oui.json"
 # datetime.min was not usable because we need a timezone aware datetime
 # and adding a negative offset to datetime.min doesn't make sense.
 epoch_datetime = datetime.fromtimestamp(0)
-
 
 class DuidType(IntEnum):
     LINK_LAYER_PLUS_TIME = 1
@@ -365,8 +364,8 @@ class DhcpLeaseFile:
         # print(f"IA-NA bytes: {s} ({len(s)} bytes)")
         iaid = int.from_bytes(s[0:4], "big")
         duid_data = s[4:]
-        # duid_type = int.from_bytes(duid_data[:2], "big")
-        # duid_value = duid_data[2:]
+        duid_type = int.from_bytes(duid_data[:2], "big")
+        duid_value = duid_data[2:]
 
         duid = Duid.create(duid_data)
 
@@ -378,9 +377,9 @@ class DhcpLeaseFile:
         return {
             "iaid": iaid,
             "duid": duid,
-            # "duid": duid,
-            # "duidType": duid_type,
-            # "duidValue": duid_value,
+            "duidData": duid_data,
+            "duidType": duid_type,
+            "duidValue": duid_value,
             "mac": mac,
         }
 
@@ -522,13 +521,14 @@ def print_ipv6_leases(leases, **kargs):
     display_client_names = kargs.get("display_client_names")
 
     columns = [
-        # { "text": "IP",             "width": 15 },
-        { "text": "Lease Updated",  "width": 20 },
-        { "text": "Lease End",      "width": 26 if print_expired_leases else 20 },
+        { "text": "IP",             "width": 25 },
+        #{ "text": "Lease Updated",  "width": 20 },
+        #{ "text": "Lease End",      "width": 26 if print_expired_leases else 20 },
         { "text": "MAC",            "width": 18 },
-        { "text": "Hostname",       "width": 15 },
-        { "text": "Client Name",    "width": 15,    "condition": lambda v: display_client_names },
-        { "text": "Manufacturer" },
+        #{ "text": "Hostname",       "width": 15 },
+        #{ "text": "Client Name",    "width": 15,    "condition": lambda v: display_client_names },
+        #{ "text": "Manufacturer" },
+        { "text": "DUID" },
     ]
 
     header, line_separator = format_table_header(columns)
@@ -548,9 +548,12 @@ def print_ipv6_leases(leases, **kargs):
             expired_text = expired_text or "(inv.)" if not lease_valid else ""
 
             duid = "Unavailable"
+            duidStr = "Unavailable"
             mac = values.get("mac") or ""
             if binding_state != "static":
                 duid = values["duid"]
+                duidStr = values["duidData"].hex()
+                duidStr = ":".join(duidStr[i:i+2] for i in range(0, len(duidStr), 2))
                 if duid.type == DuidType.LINK_LAYER_PLUS_TIME or duid.type == DuidType.LINK_LAYER:
                     mac = values.get("mac") or ""
                 else:
@@ -570,8 +573,9 @@ def print_ipv6_leases(leases, **kargs):
             end_date += f" {expired_text}" if expired_text else ""
 
             if lease_valid or print_expired_leases:
-                print(f'{ip:40}')
-                print(format_table_row(columns, start_date, end_date, mac, hostname, client_name, manufacturer))
+                #print(f'{ip:40}')
+                print(format_table_row(columns, ip, mac, duidStr))
+                #print(format_table_row(columns, start_date, end_date, mac, hostname, client_name, manufacturer, duid))
         except Exception as e:
             print(f"Failed processing a DHCP entry: {e}")
             traceback.print_exc()

@@ -528,6 +528,7 @@ def print_ipv6_leases(leases, **kargs):
         #{ "text": "Hostname",       "width": 15 },
         #{ "text": "Client Name",    "width": 15,    "condition": lambda v: display_client_names },
         #{ "text": "Manufacturer" },
+        { "text": "IAID",           "width": 12 },
         { "text": "DUID" },
     ]
 
@@ -551,6 +552,7 @@ def print_ipv6_leases(leases, **kargs):
             duidStr = "Unavailable"
             mac = values.get("mac") or ""
             if binding_state != "static":
+                iaid = str(values["iaid"])
                 duid = values["duid"]
                 duidStr = values["duidData"].hex()
                 duidStr = ":".join(duidStr[i:i+2] for i in range(0, len(duidStr), 2))
@@ -574,7 +576,7 @@ def print_ipv6_leases(leases, **kargs):
 
             if lease_valid or print_expired_leases:
                 #print(f'{ip:40}')
-                print(format_table_row(columns, ip, mac, duidStr))
+                print(format_table_row(columns, ip, mac, iaid, duidStr))
                 #print(format_table_row(columns, start_date, end_date, mac, hostname, client_name, manufacturer, duid))
         except Exception as e:
             print(f"Failed processing a DHCP entry: {e}")

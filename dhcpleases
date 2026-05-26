@@ -60,7 +60,11 @@ class Duid:
 class DuidLinkLayer(Duid):
     def __init__(self, duid_data):
         super().__init__(duid_data)
-        self.hardware_type = IanaHardwareType(int.from_bytes(duid_data[2:4], "big"))
+        hardware_type = int.from_bytes(duid_data[2:4], "big")
+        try:
+            self.hardware_type = IanaHardwareType(hardware_type)
+        except ValueError:
+            self.hardware_type = hardware_type
         self.address = duid_data[4:]
 
 class DuidLinkLayerPlusTime(DuidLinkLayer):
